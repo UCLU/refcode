@@ -1,0 +1,64 @@
+<?php
+/**
+ * @file
+ * Install functions for the Refcode module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function refcode_schema() {
+  $schema = array();
+  
+  $schema['refcode'] = array(
+    'description' => 'A table storing reference codes for the Refcode module.',
+    'fields' => array(
+      'refcode_id' => array(
+        'description' => 'Primary key.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'refcode' => array(
+        'description' => 'The unique reference code for the entity.',
+        'type' => 'varchar',
+        'length' => 20,
+        'not null' => TRUE,
+      ),
+      'entity_type' => array(
+        'description' => 'The entity type (machine name).',
+        'type' => 'varchar',
+        'length' => 100,
+        'not null' => TRUE,
+      ),
+      'entity_id' => array(
+        'description' => 'The entity ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'created' => array(
+        'description' => 'The Unix timestamp for when the refcode was created.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'changed' => array(
+        'description' => 'The Unix timestamp for when the refcode was last changed.',
+        'type' => 'int',
+        'not null' => FALSE,
+      ),
+    ),
+    'primary key' => array('refcode_id'),
+    'unique keys' => array(
+      'refcode' => array('refcode'),
+      'entity' => array('entity_type', 'entity_id'),
+    ),
+    'indexes' => array(
+      'created' => array('created'),
+      'changed' => array('changed'),
+    ),
+  );
+  
+  return $schema;
+}

@@ -1,0 +1,141 @@
+<?php
+/**
+ * @file
+ * Main module file for the Refcode module.
+ * 
+ * @todo make refcode field
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function refcode_theme() {
+  return array(
+    'refcode_link' => array(
+      'variables' => array(
+        'refcode' => NULL,
+        'entity' => NULL,
+        'type' => NULL,
+        'id' => NULL,
+      ),
+      'file' => 'refcode.theme.inc',
+    ),
+  );
+}
+
+/**
+ * Implements hook_filter_info().
+ */
+function refcode_filter_info() {
+  $filters['refcode_link'] = array(
+    'title' => t('Refcode to Link filter'),
+    'description' => t('Converts reference codes in the form [REFCODE] into links.'),
+    'process callback' => '_refcode_link_filter',
+    'tips callback' => '_refcode_link_filter_tips',
+  );
+  return $filters;
+}
+
+/**
+ * Filter tips callback for the Refcode to Link filter.
+ */
+function _refcode_link_filter_tips($delta, $format, $long = FALSE) {
+  return t('Reference codes e.g. [REFCODE] turn into links automatically.');
+}
+
+/**
+ * Filter process callback for the Refcode to Link filter.
+ */
+function _refcode_link_filter($text, $filter, $format) {
+  $search_pattern = '/(?:(?<!\w)\[([^\]]+)\](?!\w))|<pre>.*?<\/pre>|<code>.*?<\/code>|<a(?:[^>"\']|"[^"]*"|\'[^\']*\')*>.*?<\/a>/';
+  $text = preg_replace_callback($search_pattern, '_refcode_link_callback', $text);
+  return $text;
+}
+
+/**
+ * Load a refcode object.
+ * 
+ * @param string $refcode  The reference code.
+ * 
+ * @return stdClass
+ *   Returns an object containing the properties entity_type, entity_id, etc.
+ */
+function refcode_load_by_code($refcode) {
+  $refcodes = refcode_load_multiple(array(), array('refcode' => $refcode));
+  return count($refcodes) ? reset($refcodes) : FALSE;
+}
+
+/**
+ * Load a refcode object.
+ * 
+ * @return stdClass
+ *   Returns an object containing the properties entity_type, entity_id, etc.
+ */
+function refcode_load($refcode_id) {
+  $refcodes = refcode_load_multiple(array($refcode_id));
+  return count($refcodes) ? reset($refcodes) : FALSE;
+}
+
+/**
+ * Load multiple refcode objects.
+ * 
+ * @return array
+ *   Returns an array of refcode objects.
+ */
+function refcode_load_multiple(array $refcode_ids, array $conditions = array()) {
+  $valid = FALSE;
+  $query = db_select('refcode', 'r')
+    ->fields('r');
+  if (count($refcode_ids)) {
+    $query->condition('refcode_id', $refcode_ids, 'IN');
+    $valid = TRUE;
+  }
+  if (count($conditions)) {
+    foreach ($conditions as $key => $value) {
+      $query->condition($key, $value);
+    }
+    $valid = TRUE;
+  }
+  if (!$valid) {
+    throw new Exception('You need to specify at least one ID or condition.');
+  }
+  $result = $query->execute();
+  if (!$result) {
+    return array();
+  }
+  return $result->fetchAllAssoc('refcode_id');
+}
+
+/**
+ * Callback function used by preg_replace_callback().
+ * 
+ * @see _refcode_link_filter()
+ */
+function _refcode_link_callback($matches) {
+  $refcode = refcode_load_by_code($matches[1]);
+  if ($refcode) {
+    $entities = entity_load($refcode->entity_type, array($refcode->entity_id));
+    $entity = reset($entities);
+    if (!$entity) {
+      watchdog(
+        'refcode',
+        'Refcode @refcode refers to a nonexistent entity (@type:@id).',
+        array(
+          '@refcode' => $refcode->refcode,
+          '@type' => $refcode->entity_type,
+          '@id' => $refcode->entity_id,
+        ),
+        WATCHDOG_WARNING
+      );
+    }
+    else if (entity_access('view', $refcode->entity_type, $entity)) {
+      return theme('refcode_link', array(
+        'refcode' => $refcode->refcode,
+        'entity' => $entity,
+        'type' => $refcode->entity_type,
+        'id' => $refcode->entity_id,
+      ));
+    }
+  }
+  return $matches[0];
+}

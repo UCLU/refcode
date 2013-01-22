@@ -1,0 +1,4 @@
+name = Refcode
+description = "Provides reference code functionality to entities."
+core = 7.x
+dependencies[] = entity
