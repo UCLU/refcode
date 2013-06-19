@@ -2,7 +2,7 @@
 /**
  * @file
  * Main module file for the Refcode module.
- * 
+ *
  * @todo make refcode field
  */
 
@@ -14,9 +14,12 @@ function refcode_theme() {
     'refcode_link' => array(
       'variables' => array(
         'refcode' => NULL,
-        'entity' => NULL,
-        'type' => NULL,
-        'id' => NULL,
+        'link' => FALSE,
+        'path' => NULL,
+        'link options' => array(),
+        'label' => NULL,
+        'append code' => TRUE,
+        'broken' => FALSE,
       ),
       'file' => 'refcode.theme.inc',
     ),
@@ -54,9 +57,9 @@ function _refcode_link_filter($text, $filter, $format) {
 
 /**
  * Load a refcode object.
- * 
+ *
  * @param string $refcode  The reference code.
- * 
+ *
  * @return stdClass
  *   Returns an object containing the properties entity_type, entity_id, etc.
  */
@@ -67,7 +70,7 @@ function refcode_load_by_code($refcode) {
 
 /**
  * Load a refcode object.
- * 
+ *
  * @return stdClass
  *   Returns an object containing the properties entity_type, entity_id, etc.
  */
@@ -78,7 +81,7 @@ function refcode_load($refcode_id) {
 
 /**
  * Load multiple refcode objects.
- * 
+ *
  * @return array
  *   Returns an array of refcode objects.
  */
@@ -108,34 +111,40 @@ function refcode_load_multiple(array $refcode_ids, array $conditions = array()) 
 
 /**
  * Callback function used by preg_replace_callback().
- * 
+ *
  * @see _refcode_link_filter()
  */
 function _refcode_link_callback($matches) {
-  $refcode = refcode_load_by_code($matches[1]);
+  if (!isset($matches[1])) {
+    return $matches[0];
+  }
+  $code = $matches[1];
+  $colon_pos = strpos($code, ':');
+  if ($colon_pos) {
+    $label = substr($code, 0, $colon_pos);
+    $code = substr($code, $colon_pos + 1);
+  }
+  $options = array(
+    'refcode' => $code,
+  );
+  $refcode = refcode_load_by_code($code);
   if ($refcode) {
     $entities = entity_load($refcode->entity_type, array($refcode->entity_id));
     $entity = reset($entities);
     if (!$entity) {
-      watchdog(
-        'refcode',
-        'Refcode @refcode refers to a nonexistent entity (@type:@id).',
-        array(
-          '@refcode' => $refcode->refcode,
-          '@type' => $refcode->entity_type,
-          '@id' => $refcode->entity_id,
-        ),
-        WATCHDOG_WARNING
+      $options['broken'] = TRUE;
+    }
+    elseif (entity_access('view', $refcode->entity_type, $entity)) {
+      $options['label'] = entity_label($refcode->entity_type, $entity);
+      $uri = entity_uri($refcode->entity_type, $entity);
+      $options += array(
+        'link' => TRUE,
+        'path' => $uri['path'],
       );
     }
-    else if (entity_access('view', $refcode->entity_type, $entity)) {
-      return theme('refcode_link', array(
-        'refcode' => $refcode->refcode,
-        'entity' => $entity,
-        'type' => $refcode->entity_type,
-        'id' => $refcode->entity_id,
-      ));
-    }
   }
-  return $matches[0];
+  if (isset($label)) {
+    $options['label'] = $label;
+  }
+  return theme('refcode_link', $options);
 }

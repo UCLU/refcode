@@ -1,4 +1,5 @@
 name = Refcode
 description = "Provides reference code functionality to entities."
 core = 7.x
+stylesheets[all][] = refcode.css
 dependencies[] = entity

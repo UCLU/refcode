@@ -16,7 +16,20 @@
  *     - path    The referenced entity's path.
  */
 function theme_refcode_link(array $variables) {
-  return l($variables['label'], $variables['uri']);
+  $label = $variables['label'];
+  if ($variables['append code']) {
+    $label .= ' (' . $variables['refcode'] . ')';
+  }
+  if ($variables['link']) {
+    $output = l($label, $variables['path'], $variables['link options']);
+  }
+  else {
+    $output = $label;
+  }
+  if ($variables['broken']) {
+    $output = '<span class="refcode-broken">' . $output . '</span>';
+  }
+  return $output;
 }
 
 /**
@@ -25,19 +38,18 @@ function theme_refcode_link(array $variables) {
  * @see theme_refcode()
  */
 function template_preprocess_refcode_link(array &$variables) {
-  $entity = $variables['entity'];
-  $entity_type = $variables['type'];
-  $entity_id = $variables['id'];
-  $uri = entity_uri($entity_type, $entity);
-  $path = $uri['path'];
 
-  $entity_wrapper = entity_metadata_wrapper($entity_type, $entity);
-  $label = $entity_wrapper->label();
-  $bundle = $entity_wrapper->getBundle();
+  if (empty($variables['path'])) {
+    $variables['link'] = FALSE;
+  }
 
+  if (empty($variables['label'])) {
+    $variables['label'] = $variables['refcode'];
+    $variables['append code'] = FALSE;
+  }
+
+  // Sanitize variables.
   $variables['refcode'] = check_plain($variables['refcode']);
-  $variables['type'] = check_plain($entity_type);
-  $variables['id'] = (int) $entity_id;
-  $variables['label'] = check_plain($label);
-  $variables['uri'] = check_plain($path);
+  $variables['label'] = check_plain($variables['label']);
+
 }
