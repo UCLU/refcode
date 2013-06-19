@@ -128,20 +128,21 @@ function _refcode_link_callback($matches) {
     'refcode' => $code,
   );
   $refcode = refcode_load_by_code($code);
-  if ($refcode) {
-    $entities = entity_load($refcode->entity_type, array($refcode->entity_id));
-    $entity = reset($entities);
-    if (!$entity) {
-      $options['broken'] = TRUE;
-    }
-    elseif (entity_access('view', $refcode->entity_type, $entity)) {
-      $options['label'] = entity_label($refcode->entity_type, $entity);
-      $uri = entity_uri($refcode->entity_type, $entity);
-      $options += array(
-        'link' => TRUE,
-        'path' => $uri['path'],
-      );
-    }
+  if (!$refcode) {
+    return $matches[0];
+  }
+  $entities = entity_load($refcode->entity_type, array($refcode->entity_id));
+  $entity = reset($entities);
+  if (!$entity) {
+    $options['broken'] = TRUE;
+  }
+  elseif (entity_access('view', $refcode->entity_type, $entity)) {
+    $options['label'] = entity_label($refcode->entity_type, $entity);
+    $uri = entity_uri($refcode->entity_type, $entity);
+    $options += array(
+      'link' => TRUE,
+      'path' => $uri['path'],
+    );
   }
   if (isset($label)) {
     $options['label'] = $label;
