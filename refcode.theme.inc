@@ -17,19 +17,19 @@
  */
 function theme_refcode_link(array $variables) {
   $label = $variables['label'];
-  if ($variables['append code']) {
-    $label .= ' (' . $variables['refcode'] . ')';
+  if (empty($label)) {
+    $label = '<code>' . $variables['refcode'] . '</code>';
+  }
+  elseif ($variables['append code']) {
+    $label .= ' (<code>' . $variables['refcode'] . '</code>)';
   }
   if ($variables['link']) {
-    $output = l($label, $variables['path'], $variables['link options']);
+    $output = l($label, $variables['path'], array('html' => TRUE) + $variables['link options']);
   }
   else {
     $output = $label;
   }
-  if ($variables['broken']) {
-    $output = '<span class="refcode-broken">' . $output . '</span>';
-  }
-  return $output;
+  return '<span' . drupal_attributes($variables['attributes']) . '>' . $output . '</span>';
 }
 
 /**
@@ -43,9 +43,10 @@ function template_preprocess_refcode_link(array &$variables) {
     $variables['link'] = FALSE;
   }
 
-  if (empty($variables['label'])) {
-    $variables['label'] = $variables['refcode'];
-    $variables['append code'] = FALSE;
+  $variables['attributes']['class'][] = 'refcode';
+
+  if ($variables['broken']) {
+    $variables['attributes']['class'][] = 'refcode-broken';
   }
 
   // Sanitize variables.

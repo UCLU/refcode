@@ -20,6 +20,7 @@ function refcode_theme() {
         'label' => NULL,
         'append code' => TRUE,
         'broken' => FALSE,
+        'attributes' => array(),
       ),
       'file' => 'refcode.theme.inc',
     ),
