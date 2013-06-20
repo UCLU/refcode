@@ -6,6 +6,93 @@
  * @todo make refcode field
  */
 
+/*
+ * Implements hook_field_info().
+ *
+ * Define the Refcode field.
+ */
+function refcode_field_info() {
+  return array(
+    'refcode' => array(
+      'label' => t('Reference code'),
+      'description' => t('Field for a unique reference code.'),
+      'settings' => array('max_length' => 100, 'size' => 10),
+      'instance_settings' => array('text_processing' => 0),
+      'default_widget' => 'text_textfield',
+      'default_formatter' => 'refcode_formatter',
+    ),
+  );
+}
+
+/*
+ * Implements hook_field_widget_info_alter().
+ *
+ * Allow the Refcode field to use the text_textfield widget.
+ */
+function refcode_field_widget_info_alter(&$info) {
+  $info['text_textfield']['field types'][] = 'refcode';
+}
+
+/*
+ * Implements hook_field_field_is_empty().
+ *
+ * This function must be defined according to field.module.
+ *
+ * @return bool
+ */
+function refcode_field_is_empty($item, $field) {
+  return empty($item['value']);
+}
+
+/*
+ * Implements hook_field_validate().
+ */
+function refcode_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  $entity_ids = entity_extract_ids($entity_type, $entity);
+  foreach ($items as $delta => $item) {
+    if (!empty($item['value'])) {
+      $other_refcode = refcode_load_by_code($item['value']);
+      if ($other_refcode && (
+            $other_refcode->entity_type != $entity_type
+            || $other_refcode->entity_id != $entity_ids[0]
+          )) {
+        $errors[$field['field_name']][$langcode][$delta][] = array(
+          'error' => 'refcode_exists',
+          'message' => t('The code %code is already in use.', array('%code' => $item['value'])),
+        );
+      }
+    }
+  }
+}
+
+/*
+ * Implements hook_field_formatter_info().
+ */
+function refcode_field_formatter_info() {
+  return array(
+    'refcode_formatter' => array(
+      'label' => t('Refcode'),
+      'field types' => array('refcode'),
+      'settings'  => array(),
+    ),
+  );
+}
+
+/*
+ * Implements hook_field_formatter_view().
+ */
+function refcode_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+  if ($display['type'] == 'refcode_formatter') {
+    foreach ($items as $delta => $item) {
+      $element[$delta] = array(
+        '#markup' => check_plain($item['value']),
+      );
+    }
+  }
+  return $element;
+}
+
 /**
  * Implements hook_theme().
  */
@@ -65,49 +152,20 @@ function _refcode_link_filter($text, $filter, $format) {
  *   Returns an object containing the properties entity_type, entity_id, etc.
  */
 function refcode_load_by_code($refcode) {
-  $refcodes = refcode_load_multiple(array(), array('refcode' => $refcode));
-  return count($refcodes) ? reset($refcodes) : FALSE;
-}
-
-/**
- * Load a refcode object.
- *
- * @return stdClass
- *   Returns an object containing the properties entity_type, entity_id, etc.
- */
-function refcode_load($refcode_id) {
-  $refcodes = refcode_load_multiple(array($refcode_id));
-  return count($refcodes) ? reset($refcodes) : FALSE;
-}
-
-/**
- * Load multiple refcode objects.
- *
- * @return array
- *   Returns an array of refcode objects.
- */
-function refcode_load_multiple(array $refcode_ids, array $conditions = array()) {
-  $valid = FALSE;
-  $query = db_select('refcode', 'r')
-    ->fields('r');
-  if (count($refcode_ids)) {
-    $query->condition('refcode_id', $refcode_ids, 'IN');
-    $valid = TRUE;
-  }
-  if (count($conditions)) {
-    foreach ($conditions as $key => $value) {
-      $query->condition($key, $value);
-    }
-    $valid = TRUE;
-  }
-  if (!$valid) {
-    throw new Exception('You need to specify at least one ID or condition.');
-  }
+  $query = new EntityFieldQuery();
+  $query->fieldCondition('field_refcode', 'value', $refcode, '=');
   $result = $query->execute();
   if (!$result) {
-    return array();
+    return FALSE;
   }
-  return $result->fetchAllAssoc('refcode_id');
+  foreach ($result as $entity_type => $entities) {
+    foreach ($entities as $entity_id => $entity) {
+      $entity->entity_type = $entity_type;
+      $entity->entity_id = $entity_id;
+      return $entity;
+      break;
+    }
+  }
 }
 
 /**
@@ -132,12 +190,8 @@ function _refcode_link_callback($matches) {
   if (!$refcode) {
     return $matches[0];
   }
-  $entities = entity_load($refcode->entity_type, array($refcode->entity_id));
-  $entity = reset($entities);
-  if (!$entity) {
-    $options['broken'] = TRUE;
-  }
-  elseif (entity_access('view', $refcode->entity_type, $entity)) {
+  $entity = $refcode;
+  if (entity_access('view', $refcode->entity_type, $entity)) {
     $options['label'] = entity_label($refcode->entity_type, $entity);
     $uri = entity_uri($refcode->entity_type, $entity);
     $options += array(
