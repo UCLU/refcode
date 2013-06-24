@@ -23,3 +23,10 @@ function refcode_field_schema($field) {
     ),
   );
 }
+
+/**
+ * Implements hook_uninstall().
+ */
+function refcode_uninstall() {
+  variable_del('refcode_create_redirects');
+}

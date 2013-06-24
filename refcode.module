@@ -65,6 +65,88 @@ function refcode_field_validate($entity_type, $entity, $field, $instance, $langc
   }
 }
 
+/**
+ * Implements hook_field_insert().
+ */
+function refcode_field_insert($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  if (!variable_get('refcode_create_redirects', TRUE)) {
+    return;
+  }
+  foreach ($items as $delta => $item) {
+    if (!empty($item['value'])) {
+      _refcode_create_redirect($item['value'], $entity_type, $entity, $langcode);
+    }
+  }
+}
+
+/**
+ * Implements hook_field_update().
+ */
+function refcode_field_update($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  if (!variable_get('refcode_create_redirects', TRUE)) {
+    return;
+  }
+  foreach ($items as $delta => $item) {
+    if (!empty($item['value'])) {
+      _refcode_create_redirect($item['value'], $entity_type, $entity, $langcode);
+    }
+  }
+}
+
+/**
+ * Create a redirect for a refcode.
+ *
+ * Requires the Redirect module.
+ *
+ * @return bool
+ *   TRUE or FALSE for success or failure.
+ */
+function _refcode_create_redirect($refcode, $entity_type, $entity, $langcode) {
+  if (!module_exists('redirect')) {
+    return FALSE;
+  }
+  // Prevent creating redirects for invalid source paths.
+  if (strpos($refcode, '#') !== FALSE || $refcode == '<front>') {
+    watchdog('refcode', 'Cannot create redirect for refcode @refcode (invalid path).', array(
+      '@refcode' => $refcode,
+    ), SEVERITY_WARNING);
+    return FALSE;
+  }
+  // Get the redirect (target) URI.
+  $redirect_uri = entity_uri($entity_type, $entity);
+  $redirect_path = $redirect_uri['path'];
+  // Don't create unnecessary redirects.
+  if ($refcode == $redirect_path) {
+    return TRUE;
+  }
+  // Prevent creating redirects that override existing paths.
+  $menu_item = menu_get_item($refcode);
+  if ($menu_item && $refcode == $menu_item['path']) {
+    watchdog('refcode', 'Cannot create redirect for refcode @refcode (a menu item exists with the same path).', array(
+      '@refcode' => $refcode,
+    ), SEVERITY_WARNING);
+    return FALSE;
+  }
+  $redirect = new stdClass();
+  redirect_object_prepare($redirect);
+  $redirect->source = $refcode;
+  $redirect->redirect = $redirect_path;
+  $redirect->language = $langcode;
+  $hash = redirect_hash($redirect);
+  if (!redirect_load_by_hash($hash)) {
+    redirect_save($redirect);
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Delete a redirect for a now removed refcode.
+ */
+function _refcode_delete_redirect($refcode, $entity_type, $entity, $langcode) {
+
+}
+
 /*
  * Implements hook_field_formatter_info().
  */
