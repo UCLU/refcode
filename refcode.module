@@ -51,6 +51,13 @@ function refcode_field_validate($entity_type, $entity, $field, $instance, $langc
   $entity_ids = entity_extract_ids($entity_type, $entity);
   foreach ($items as $delta => $item) {
     if (!empty($item['value'])) {
+      if (preg_match('/[^a-z0-9\-_]/i', $item['value'])) {
+        $errors[$field['field_name']][$langcode][$delta][] = array(
+          'error' => 'refcode_exists',
+          'message' => t('Reference codes may only contain letters, numbers, and - or _ characters.'),
+        );
+        continue;
+      }
       $other_refcode = refcode_load_by_code($item['value']);
       if ($other_refcode && (
             $other_refcode->entity_type != $entity_type
