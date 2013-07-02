@@ -8,12 +8,11 @@
  * Template for linking to referenced entities.
  *
  * Variables:
- *     - refcode The refcode.
- *     - type    The referenced entity type.
- *     - id      The referenced entity's ID.
- *     - bundle  The referenced entity's bundle.
- *     - label   The referenced entity's label.
- *     - path    The referenced entity's path.
+ *     - 'refcode'      The refcode (string).
+ *     - 'path'         The referenced entity's path (string).
+ *     - 'label'        A label for the referenced entity (string).
+ *     - 'link'         Whether to provide a link (Boolean).
+ *     - 'append code'  Whether to append the raw refcode if 'label' is set.
  */
 function theme_refcode_link(array $variables) {
   $label = $variables['label'];
@@ -21,15 +20,12 @@ function theme_refcode_link(array $variables) {
     $label = '<code>' . $variables['refcode'] . '</code>';
   }
   elseif ($variables['append code']) {
-    $label .= ' (<code>' . $variables['refcode'] . '</code>)';
+    $label .= ' <code class="refcode-small">(' . $variables['refcode'] . ')</code>';
   }
   if ($variables['link']) {
-    $output = l($label, $variables['path'], array('html' => TRUE) + $variables['link options']);
+    return l($label, $variables['path'], array('html' => TRUE, 'attributes' => $variables['attributes']) + $variables['link options']);
   }
-  else {
-    $output = $label;
-  }
-  return '<span' . drupal_attributes($variables['attributes']) . '>' . $output . '</span>';
+  return '<span' . drupal_attributes($variables['attributes']) . '>' . $label . '</span>';
 }
 
 /**
@@ -39,18 +35,24 @@ function theme_refcode_link(array $variables) {
  */
 function template_preprocess_refcode_link(array &$variables) {
 
-  if (empty($variables['path'])) {
-    $variables['link'] = FALSE;
-  }
+  // Sanitize variables.
+  $variables['refcode'] = check_plain($variables['refcode']);
 
-  $variables['attributes']['class'][] = 'refcode';
+  if (!empty($variables['label'])) {
+    $variables['label'] = check_plain($variables['label']);
+    $variables['attributes']['title'] = t('!refcode: !label', array(
+      '!refcode' => $variables['refcode'],
+      '!label' => $variables['label'],
+    ));
+  }
 
   if ($variables['broken']) {
     $variables['attributes']['class'][] = 'refcode-broken';
   }
 
-  // Sanitize variables.
-  $variables['refcode'] = check_plain($variables['refcode']);
-  $variables['label'] = check_plain($variables['label']);
+  // Don't link if there is no path.
+  if (empty($variables['path'])) {
+    $variables['link'] = FALSE;
+  }
 
 }

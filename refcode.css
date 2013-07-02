@@ -2,11 +2,16 @@
  * CSS for the Refcode module.
  */
 
-.refcode code {
+code.refcode {
+  background: none;
   font-family: inherit;
-  font-size: inherit;
+  font-size: 1em;
   padding: 0;
 }
-.refcode-broken {
+code.refcode-small {
+  font-family: monospace;
+  font-size: 0.9em;
+}
+code.refcode-broken {
   color: red;
 }

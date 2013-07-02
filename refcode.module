@@ -194,8 +194,8 @@ function refcode_theme() {
         'path' => NULL,
         'link options' => array(),
         'label' => NULL,
-        'append code' => TRUE,
         'broken' => FALSE,
+        'append code' => TRUE,
         'attributes' => array(),
       ),
       'file' => 'refcode.theme.inc',
@@ -220,7 +220,7 @@ function refcode_filter_info() {
  * Filter tips callback for the Refcode to Link filter.
  */
 function _refcode_link_filter_tips($delta, $format, $long = FALSE) {
-  return t('Reference codes e.g. [REFCODE] turn into links automatically.');
+  return t('Reference codes e.g. [REFCODE] turn into links automatically. Use [REFCODE:label] to supply a custom link label. Use [REFCODE!] to suppress labels.');
 }
 
 /**
@@ -266,30 +266,60 @@ function _refcode_link_callback($matches) {
   if (!isset($matches[1])) {
     return $matches[0];
   }
+
+  // Get the reference code.
   $code = $matches[1];
+
+  // Build an array of options to pass to theme('refcode_link', $options).
+  $options = array();
+
+  // Get the label.
+  $label = FALSE;
   $colon_pos = strpos($code, ':');
   if ($colon_pos) {
-    $label = substr($code, 0, $colon_pos);
-    $code = substr($code, $colon_pos + 1);
+    $options['label'] = substr($code, $colon_pos + 1);
+    $code = substr($code, 0, $colon_pos);
   }
-  $options = array(
-    'refcode' => $code,
-  );
+
+  // Find out if the link shouldn't be labelled at all.
+  $length = strlen($code);
+  $suppress_label = FALSE;
+  if (substr($code, $length - 1) == '!') {
+    $suppress_label = TRUE;
+    $code = substr($code, 0, $length - 1);
+  }
+
+  // Get the refcode information.
   $refcode = refcode_load_by_code($code);
   if (!$refcode) {
     return $matches[0];
   }
-  $entity = $refcode;
-  if (entity_access('view', $refcode->entity_type, $entity)) {
-    $options['label'] = entity_label($refcode->entity_type, $entity);
+
+  // Load the target entity.
+  $entity = FALSE;
+  $entities = entity_load($refcode->entity_type, array($refcode->entity_id));
+  if ($entities) {
+    $entity = reset($entities);
+  }
+
+  $options['refcode'] = $code;
+
+  if (!$entity) {
+    $options['broken'] = TRUE;
+  }
+  elseif (entity_access('view', $refcode->entity_type, $entity)) {
+    // If no $label is set, and $suppress_label isn't set, the entity label will
+    // be used (e.g. the node title).
+    if (empty($options['label']) && !$suppress_label) {
+      $options['label'] = entity_label($refcode->entity_type, $entity);
+    }
+    $options['link'] = TRUE;
     $uri = entity_uri($refcode->entity_type, $entity);
-    $options += array(
-      'link' => TRUE,
-      'path' => $uri['path'],
-    );
+    $options['path'] = $uri['path'];
+    if (isset($uri['options'])) {
+      $options['link options'] = $uri['options'];
+    }
   }
-  if (isset($label)) {
-    $options['label'] = $label;
-  }
+
   return theme('refcode_link', $options);
 }
