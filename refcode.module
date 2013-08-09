@@ -173,10 +173,20 @@ function refcode_field_formatter_info() {
 function refcode_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
   if ($display['type'] == 'refcode_formatter') {
+    $entity_uri = entity_uri($entity_type, $entity);
+    $current_path = current_path();
     foreach ($items as $delta => $item) {
-      $element[$delta] = array(
-        '#markup' => check_plain($item['value']),
-      );
+      if ($current_path != $entity_uri['path']) {
+        $element[$delta] = array(
+          '#theme' => 'link',
+          '#path' => $entity_uri['path'],
+          '#options' => $entity_uri['options'],
+          '#text' => $item['value'],
+        );
+      }
+      else {
+        $element[$delta] = array('#markup' => check_plain($item['value']));
+      }
     }
   }
   return $element;
