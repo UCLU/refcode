@@ -180,8 +180,11 @@ function refcode_field_formatter_view($entity_type, $entity, $field, $instance, 
         $element[$delta] = array(
           '#theme' => 'link',
           '#path' => $entity_uri['path'],
-          '#options' => $entity_uri['options'],
           '#text' => $item['value'],
+          '#options' => array(
+            'html' => FALSE,
+            'attributes' => array(),
+          ),
         );
       }
       else {
