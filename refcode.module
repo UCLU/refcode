@@ -2,8 +2,6 @@
 /**
  * @file
  * Main module file for the Refcode module.
- *
- * @todo make refcode field
  */
 
 /*
@@ -20,6 +18,8 @@ function refcode_field_info() {
       'instance_settings' => array('text_processing' => 0),
       'default_widget' => 'text_textfield',
       'default_formatter' => 'refcode_formatter',
+      'default_token_formatter' => 'refcode_formatter_plain',
+      'property_type' => 'text',
     ),
   );
 }
@@ -164,6 +164,11 @@ function refcode_field_formatter_info() {
       'field types' => array('refcode'),
       'settings'  => array(),
     ),
+    'refcode_formatter_plain' => array(
+      'label' => t('Refcode (plain text)'),
+      'field types' => array('refcode'),
+      'settings'  => array(),
+    ),
   );
 }
 
@@ -172,7 +177,12 @@ function refcode_field_formatter_info() {
  */
 function refcode_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
-  if ($display['type'] == 'refcode_formatter') {
+  if ($display['type'] == 'refcode_formatter_plain') {
+    foreach ($items as $delta => $item) {
+      $element[$delta] = array('#markup' => check_plain($item['value']));
+    }
+  }
+  elseif ($display['type'] == 'refcode_formatter') {
     $entity_uri = entity_uri($entity_type, $entity);
     $current_path = current_path();
     foreach ($items as $delta => $item) {
